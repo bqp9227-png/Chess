@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>Bàn cờ vua ban đầu</title>
+  <title>Bàn cờ kiểm soát ô</title>
   <style>
     body { font-family: sans-serif; text-align: center; background: #f8fafc; }
     h1 { margin: 20px; }
@@ -19,21 +19,119 @@
     }
     .light { background: #f0d9b5; }
     .dark { background: #b58863; }
+    .c0 { background-color: rgba(0,0,0,0); }
+    .c1 { background-color: rgba(0,255,0,0.2); }
+    .c2 { background-color: rgba(0,255,0,0.4); }
+    .c3 { background-color: rgba(0,255,0,0.6); }
+    .c4 { background-color: rgba(0,255,0,0.8); }
+    .c5 { background-color: rgba(0,255,0,1); }
+    .open::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, transparent 50%, rgba(255,0,0,0.4) 50%);
+    }
   </style>
 </head>
 <body>
-  <h1>Bàn cờ lúc bắt đầu</h1>
+  <h1>Bàn cờ kiểm soát ô</h1>
   <div id="board" class="board"></div>
   <script>
     const boardEl = document.getElementById("board");
 
-    // Unicode quân cờ
     const PIECES = {
       white: ["♖","♘","♗","♕","♔","♗","♘","♖","♙","♙","♙","♙","♙","♙","♙","♙"],
       black: ["♜","♞","♝","♛","♚","♝","♞","♜","♟","♟","♟","♟","♟","♟","♟","♟"]
     };
 
-    function renderBoard() {
-      boardEl.innerHTML = "";
-      for (let r = 0; r < 8; r++) {
-       
+    let board = Array.from({length:8},()=>Array(8).fill(null));
+
+    // Đặt quân ban đầu
+    for (let c = 0; c < 8; c++) {
+      board[0][c] = {type: PIECES.black[c], color: "black"};
+      board[1][c] = {type: PIECES.black[8 + c], color: "black"};
+      board[6][c] = {type: PIECES.white[8 + c], color: "white"};
+      board[7][c] = {type: PIECES.white[c], color: "white"};
+    }
+
+    function inBounds(r,c){return r>=0&&r<8&&c>=0&&c<8;}
+
+    function computeControl(){
+      let control=Array.from({length:8},()=>Array(8).fill(0));
+      let open=Array.from({length:8},()=>Array(8).fill(false));
+      for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+        const p=board[r][c]; if(!p) continue;
+        const isWhite = p.color === "white";
+        const attacker = p.type;
+
+        // Pawn
+        if (attacker === "♙" || attacker === "♟") {
+          const dir = isWhite ? -1 : 1;
+          [[dir,-1],[dir,1]].forEach(([dr,dc])=>{
+            const rr=r+dr,cc=c+dc;
+            if(inBounds(rr,cc)) control[rr][cc]++;
+          });
+        }
+
+        // Knight
+        if (attacker === "♘" || attacker === "♞") {
+          [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]].forEach(([dr,dc])=>{
+            const rr=r+dr,cc=c+dc;
+            if(inBounds(rr,cc)) control[rr][cc]++;
+          });
+        }
+
+        // King
+        if (attacker === "♔" || attacker === "♚") {
+          [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]].forEach(([dr,dc])=>{
+            const rr=r+dr,cc=c+dc;
+            if(inBounds(rr,cc)) control[rr][cc]++;
+          });
+        }
+
+        // Sliding pieces
+        const dirs = {
+          "♗": [[-1,-1],[-1,1],[1,-1],[1,1]],
+          "♝": [[-1,-1],[-1,1],[1,-1],[1,1]],
+          "♖": [[-1,0],[1,0],[0,-1],[0,1]],
+          "♜": [[-1,0],[1,0],[0,-1],[0,1]],
+          "♕": [[-1,-1],[-1,1],[1,-1],[1,1],[-1,0],[1,0],[0,-1],[0,1]],
+          "♛": [[-1,-1],[-1,1],[1,-1],[1,1],[-1,0],[1,0],[0,-1],[0,1]]
+        }[attacker];
+
+        if (dirs) {
+          for (const [dr,dc] of dirs) {
+            let rr=r+dr,cc=c+dc,blocked=false;
+            while(inBounds(rr,cc)){
+              if(!blocked){
+                control[rr][cc]++;
+                if(board[rr][cc]) blocked=true;
+              }else{
+                control[rr][cc]++;
+                open[rr][cc]=true;
+                if(board[rr][cc]) break;
+              }
+              rr+=dr; cc+=dc;
+            }
+          }
+        }
+      }
+      return {control,open};
+    }
+
+    function render(){
+      boardEl.innerHTML="";
+      const {control,open}=computeControl();
+      for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+        const sq=document.createElement("div");
+        sq.className="square " + ((r + c) % 2 === 0 ? "light" : "dark") + " c" + Math.min(control[r][c],5);
+        if(open[r][c]) sq.classList.add("open");
+        if(board[r][c]) sq.textContent=board[r][c].type;
+        boardEl.appendChild(sq);
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>
