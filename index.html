@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Cờ vua kiểm soát ô</title>
+  <style>
+    body { font-family: sans-serif; text-align:center; background:#f8fafc; }
+    h1 { margin:20px; }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(8, 60px);
+      grid-template-rows: repeat(8, 60px);
+      margin: 0 auto;
+      border: 3px solid #333;
+    }
+    .square {
+      display:flex; align-items:center; justify-content:center;
+      font-size:28px; position:relative;
+    }
+    /* màu nền theo mức kiểm soát */
+    .c0 { background:#f0f0f0; }
+    .c1 { background:#c6f6d5; }
+    .c2 { background:#9ae6b4; }
+    .c3 { background:#68d391; }
+    .c4 { background:#48bb78; }
+    .c5 { background:#38a169; }
+    /* overlay nửa ô cho tấn công mở */
+    .open::after {
+      content:""; position:absolute; inset:0;
+      background:linear-gradient(135deg,transparent 50%,rgba(255,0,0,0.4) 50%);
+    }
+  </style>
+</head>
+<body>
+  <h1>Bàn cờ kiểm soát ô</h1>
+  <div id="board" class="board"></div>
+  <script>
+    const boardEl=document.getElementById("board");
+    // Bàn cờ: null hoặc {type,color}
+    let board=Array.from({length:8},()=>Array(8).fill(null));
+    // Ví dụ: đặt vài quân
+    board[0][0]={type:"R",color:"white"};
+    board[7][7]={type:"Q",color:"black"};
+
+    function inBounds(r,c){return r>=0&&r<8&&c>=0&&c<8;}
+
+    function computeControl(){
+      let control=Array.from({length:8},()=>Array(8).fill(0));
+      let open=Array.from({length:8},()=>Array(8).fill(false));
+      for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+        const p=board[r][c]; if(!p) continue;
+        if(p.type==="R"||p.type==="Q"){
+          [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dr,dc])=>{
+            let rr=r+dr,cc=c+dc,blocked=false;
+            while(inBounds(rr,cc)){
+              if(!blocked){
+                control[rr][cc]++;
+                if(board[rr][cc]) blocked=true;
+              }else{
+                control[rr][cc]++;
+                open[rr][cc]=true;
+                if(board[rr][cc]) break;
+              }
+              rr+=dr; cc+=dc;
+            }
+          });
+        }
+      }
+      return {control,open};
+    }
+
+    function render(){
+      boardEl.innerHTML="";
+      const {control,open}=computeControl();
+      for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+        const sq=document.createElement("div");
+        sq.className="square c"+Math.min(control[r][c],5);
+        if(open[r][c]) sq.classList.add("open");
+        if(board[r][c]) sq.textContent=board[r][c].type;
+        boardEl.appendChild(sq);
+      }
+    }
+    render();
+  </script>
+</body>
+</html>
